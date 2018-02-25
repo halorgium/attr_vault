@@ -16,6 +16,14 @@ module AttrVault
       @value = value
     end
 
+    def encrypt(message)
+      Cryptor.encrypt(message, value)
+    end
+
+    def decrypt(ciphertext)
+      Cryptor.decrypt(ciphertext, value)
+    end
+
     def digest(data)
       AttrVault::Encryption::hmac_digest(value, data)
     end

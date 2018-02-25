@@ -46,7 +46,7 @@ module AttrVault
         next unless @vault_dirty_attrs.has_key? attr.name
 
         value = @vault_dirty_attrs[attr.name]
-        encrypted = Cryptor.encrypt(value, current_key.value)
+        encrypted = current_key.encrypt(value)
 
         self[attr.encrypted_field] = encrypted
         unless attr.digest_field.nil?
@@ -100,7 +100,7 @@ module AttrVault
 
         encrypted_value = self[attr.encrypted_field]
         # TODO: cache decrypted value
-        Cryptor.decrypt(encrypted_value, record_key.value)
+        record_key.decrypt(encrypted_value)
       end
 
       define_method("#{name}=") do |value|
