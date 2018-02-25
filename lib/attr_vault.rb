@@ -54,7 +54,7 @@ module AttrVault
             self[attr.digest_field] = nil
           else
             self[attr.digest_field] =
-              Sequel.blob(Encryption.hmac_digest(current_key.value, value))
+              Sequel.blob(current_key.digest(value))
           end
         end
       end
