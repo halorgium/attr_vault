@@ -2,14 +2,16 @@ require 'spec_helper'
 require 'json'
 
 describe AttrVault do
-  let(:key_ids) { [ 1, 2 ] }
+  let(:key_ids) { [ 1, 2, 3, 4 ] }
   let(:key_values) do
     [ 'aFJDXs+798G7wgS/nap21LXIpm/Rrr39jIVo2m/cdj8=',
-      'hUL1orBBRckZOuSuptRXYMV9lx5Qp54zwFUVwpwTpdk=' ]
+      'hUL1orBBRckZOuSuptRXYMV9lx5Qp54zwFUVwpwTpdk=',
+      {type: 'fernet', secret: 'LJj3qWvvRJ4A86/rCzLTNt5xYZfszh9gonHrostX6dc='},
+      {type: 'miscreant', secret: 'L82PBeHUJuEiDmmnh1joCTHDLUDBzPjlwAiJmPz63HU='} ]
   end
 
-  def make_keyring(key_ids)
-    Hash[key_ids.zip(key_values)]
+  def make_keyring(desired_key_ids)
+    Hash[key_ids.zip(key_values).select {|k,v| desired_key_ids.include?(k)}]
   end
 
   let(:key1_id) { key_ids.fetch(0) }
@@ -18,11 +20,17 @@ describe AttrVault do
   let(:key2_id) { key_ids.fetch(1) }
   let(:key2) { keyring[key2_id] }
 
-  let(:key_id)  { key1_id }
-  let(:key) { key1 }
+  let(:key3_id) { key_ids.fetch(2) }
+  let(:key3) { keyring[key3_id] }
+
+  let(:key4_id) { key_ids.fetch(3) }
+  let(:key4) { keyring[key4_id] }
+
+  let(:key_id)  { key3_id }
+  let(:key) { key3 }
 
   let(:old_keyring) do
-    make_keyring(key_ids.take(1))
+    make_keyring([key_id])
   end
   let(:new_keyring) do
     make_keyring(key_ids)
@@ -167,7 +175,7 @@ describe AttrVault do
 
   context "with multiple encrypted columns" do
     let(:key_data) do
-      { "1" => 'aFJDXs+798G7wgS/nap21LXIpm/Rrr39jIVo2m/cdj8=' }
+      make_keyring([key1_id])
     end
     let(:item) do
       k = key_data.to_json
@@ -193,13 +201,11 @@ describe AttrVault do
   end
 
   context "with items encrypted with an older key" do
-    let(:key1_id)  { 1 }
     let(:key1) do
-      { key1_id => 'aFJDXs+798G7wgS/nap21LXIpm/Rrr39jIVo2m/cdj8=' }
+      make_keyring([key1_id])
     end
-    let(:key2_id)  { 2 }
     let(:key2) do
-      { key2_id => 'hUL1orBBRckZOuSuptRXYMV9lx5Qp54zwFUVwpwTpdk=' }
+      make_keyring([key2_id])
     end
     let(:partial_keyring) { key1.to_json }
     let(:full_keyring)    { key1.merge(key2).to_json }
@@ -428,7 +434,9 @@ end
 describe "stress test" do
   let(:key_id)   { 1 }
   let(:key_data) do
-    { key_id =>'aFJDXs+798G7wgS/nap21LXIpm/Rrr39jIVo2m/cdj8=' }.to_json
+    data = [ {type: 'fernet', secret: 'LJj3qWvvRJ4A86/rCzLTNt5xYZfszh9gonHrostX6dc='},
+             {type: 'miscreant', secret: 'L82PBeHUJuEiDmmnh1joCTHDLUDBzPjlwAiJmPz63HU='} ].first
+    { key_id => data }.to_json
   end
   let(:item) do
     k = key_data

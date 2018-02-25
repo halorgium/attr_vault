@@ -25,6 +25,7 @@ module AttrVault
     end
 
     def digest(data)
+      # TODO: why does this use the base64 version of the key
       AttrVault::Encryption::hmac_digest(value, data)
     end
 
@@ -43,7 +44,18 @@ module AttrVault
 
         if candidate_keys.is_a?(Hash)
           candidate_keys.each do |key_id, key|
-            keyring.add_key(Key.new(key_id.to_s, key))
+            if key.is_a?(Hash)
+              case key[:type]
+              when 'fernet'
+                keyring.add_key(Key.new(key_id.to_s, key[:secret]))
+              # when 'miscreant'
+                # keyring.add_key(MiscreantKey.new(key_id.to_s, key[:secret]))
+              else
+                raise InvalidKeyring, "Invalid key type: #{key_id.inspect}"
+              end
+            else
+              keyring.add_key(Key.new(key_id.to_s, key))
+            end
           end
         else
           raise InvalidKeyring, "Invalid JSON structure"
