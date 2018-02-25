@@ -3,6 +3,7 @@ require 'attr_vault/keyring'
 require 'attr_vault/secret'
 require 'attr_vault/encryption'
 require 'attr_vault/cryptor'
+require 'sequel'
 require 'json'
 
 module AttrVault
