@@ -34,6 +34,40 @@ module AttrVault
     end
   end
 
+  class MiscreantKey
+    attr_reader :id
+
+    def initialize(id, secret)
+      @id = Integer(id)
+      secret = Base64.strict_decode64(secret)
+      @encryptor = Miscreant::AEAD.new("AES-SIV", secret)
+      @cmac = Miscreant::AES::CMAC.new(secret)
+    end
+
+    def encrypt(message)
+      return message if message.nil? || message.empty?
+
+      nonce = Miscreant::AEAD.generate_nonce
+      ciphertext = @encryptor.seal(message.encode(Encoding::BINARY), nonce: nonce)
+      Sequel.blob(nonce + ciphertext)
+    end
+
+    def decrypt(encrypted)
+      return encrypted if encrypted.nil? || encrypted.empty?
+
+      nonce, ciphertext = encrypted[0...16], encrypted[16..-1]
+      @encryptor.open(ciphertext, nonce: nonce)
+    end
+
+    def digest(data)
+      @cmac.digest(data.encode(Encoding::BINARY))
+    end
+
+    def to_json(*args)
+      { id: id, secret: secret }.to_json
+    end
+  end
+
   class Keyring
     attr_reader :keys
 
@@ -48,8 +82,9 @@ module AttrVault
               case key[:type]
               when 'fernet'
                 keyring.add_key(Key.new(key_id.to_s, key[:secret]))
-              # when 'miscreant'
-                # keyring.add_key(MiscreantKey.new(key_id.to_s, key[:secret]))
+              when 'miscreant'
+                require 'miscreant'
+                keyring.add_key(MiscreantKey.new(key_id.to_s, key[:secret]))
               else
                 raise InvalidKeyring, "Invalid key type: #{key_id.inspect}"
               end

@@ -26,8 +26,8 @@ describe AttrVault do
   let(:key4_id) { key_ids.fetch(3) }
   let(:key4) { keyring[key4_id] }
 
-  let(:key_id)  { key3_id }
-  let(:key) { key3 }
+  let(:key_id)  { Integer(ENV.fetch("SPEC_KEY_ID", key1_id)) }
+  let(:key) { keyring[key_id] }
 
   let(:old_keyring) do
     make_keyring([key_id])
@@ -267,9 +267,8 @@ describe AttrVault do
   end
 
   context "with plaintext source fields" do
-    let(:key_id)   { 1 }
     let(:key_data) do
-      { key_id => 'aFJDXs+798G7wgS/nap21LXIpm/Rrr39jIVo2m/cdj8=' }.to_json
+      make_keyring([key_id]).to_json
     end
     let(:item1) do
       k = key_data
@@ -370,9 +369,8 @@ describe AttrVault do
   end
 
   context "with a digest field" do
-    let(:key_id)   { 1 }
     let(:key) do
-      { key_id => 'aFJDXs+798G7wgS/nap21LXIpm/Rrr39jIVo2m/cdj8=' }
+      make_keyring([key_id])
     end
     let(:item) do
       k = key.to_json
@@ -385,8 +383,14 @@ describe AttrVault do
     end
 
     def test_digest(key, data)
-      OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'),
-                           key[key_id], data)
+      if key_id < 4
+        secret = key_id == 3 ? key[key_id][:secret] : key[key_id]
+        OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'),
+                             secret, data)
+      else
+        secret = Base64.strict_decode64(key[key_id][:secret])
+        Miscreant::AES::CMAC.new(secret).digest(data.encode(Encoding::BINARY))
+      end
     end
 
     def count_matching_digests(item_class, digest_field, secret)
@@ -435,7 +439,7 @@ describe "stress test" do
   let(:key_id)   { 1 }
   let(:key_data) do
     data = [ {type: 'fernet', secret: 'LJj3qWvvRJ4A86/rCzLTNt5xYZfszh9gonHrostX6dc='},
-             {type: 'miscreant', secret: 'L82PBeHUJuEiDmmnh1joCTHDLUDBzPjlwAiJmPz63HU='} ].first
+             {type: 'miscreant', secret: 'L82PBeHUJuEiDmmnh1joCTHDLUDBzPjlwAiJmPz63HU='} ].sample
     { key_id => data }.to_json
   end
   let(:item) do
