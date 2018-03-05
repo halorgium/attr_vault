@@ -1,13 +1,20 @@
 require 'spec_helper'
 require 'json'
+require 'miscreant'
+require 'rbnacl'
 
 describe AttrVault do
-  let(:key_ids) { [ 1, 2, 3, 4 ] }
+  let(:key_ids) { [ 1, 2, 3, 4, 5 ] }
   let(:key_values) do
     [ 'aFJDXs+798G7wgS/nap21LXIpm/Rrr39jIVo2m/cdj8=',
       'hUL1orBBRckZOuSuptRXYMV9lx5Qp54zwFUVwpwTpdk=',
       {type: 'fernet', secret: 'LJj3qWvvRJ4A86/rCzLTNt5xYZfszh9gonHrostX6dc='},
-      {type: 'miscreant', secret: 'L82PBeHUJuEiDmmnh1joCTHDLUDBzPjlwAiJmPz63HU='} ]
+      {type: 'miscreant', secret: 'L82PBeHUJuEiDmmnh1joCTHDLUDBzPjlwAiJmPz63HU='},
+      {type: 'libsodium', secret: make_libsodium_secret} ]
+  end
+
+  def make_libsodium_secret
+    Base64.strict_encode64(RbNaCl::Random.random_bytes(RbNaCl::SecretBox.key_bytes))
   end
 
   def make_keyring(desired_key_ids)
@@ -25,6 +32,9 @@ describe AttrVault do
 
   let(:key4_id) { key_ids.fetch(3) }
   let(:key4) { keyring[key4_id] }
+
+  let(:key5_id) { key_ids.fetch(4) }
+  let(:key5) { keyring[key5_id] }
 
   let(:key_id)  { Integer(ENV.fetch("SPEC_KEY_ID", key1_id)) }
   let(:key) { keyring[key_id] }
@@ -387,9 +397,14 @@ describe AttrVault do
         secret = key_id == 3 ? key[key_id][:secret] : key[key_id]
         OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'),
                              secret, data)
-      else
+      elsif key_id == 4
         secret = Base64.strict_decode64(key[key_id][:secret])
         Miscreant::AES::CMAC.new(secret).digest(data.encode(Encoding::BINARY))
+      elsif key_id == 5
+        secret = Base64.strict_decode64(key[key_id][:secret])
+        RbNaCl::HMAC::SHA256.auth(secret, data)
+      else
+        raise ArgumentError, "unknown key_id"
       end
     end
 

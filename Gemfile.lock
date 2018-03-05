@@ -9,8 +9,11 @@ GEM
   remote: https://rubygems.org/
   specs:
     diff-lcs (1.2.5)
+    ffi (1.9.23)
     miscreant (0.3.0)
     pg (1.0.0)
+    rbnacl (5.0.0)
+      ffi
     rspec (3.1.0)
       rspec-core (~> 3.1.0)
       rspec-expectations (~> 3.1.0)
@@ -31,6 +34,7 @@ PLATFORMS
 DEPENDENCIES
   attr_vault!
   miscreant
+  rbnacl
   rspec (~> 3.0)
 
 RUBY VERSION

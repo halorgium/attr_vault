@@ -68,6 +68,41 @@ module AttrVault
     end
   end
 
+  class LibSodiumKey
+    attr_reader :id
+
+    def initialize(id, secret)
+      @id = Integer(id)
+      binary_key = Base64.strict_decode64(secret)
+      @secret_box = RbNaCl::SecretBox.new(binary_key)
+      @authenticator = RbNaCl::HMAC::SHA256.new(binary_key)
+    end
+
+    def encrypt(message)
+      return message if message.nil? || message.empty?
+
+      nonce = RbNaCl::Random.random_bytes(@secret_box.nonce_bytes)
+      ciphertext = @secret_box.encrypt(nonce, message)
+      Sequel.blob(nonce + ciphertext)
+    end
+
+    def decrypt(encrypted)
+      return encrypted if encrypted.nil? || encrypted.empty?
+
+      nonce, ciphertext = encrypted[0...@secret_box.nonce_bytes], encrypted[@secret_box.nonce_bytes..-1]
+      @secret_box.decrypt(nonce, ciphertext)
+    end
+
+    def digest(data)
+      @authenticator.auth(data)
+    end
+
+    def to_json(*args)
+      raise "this is scary"
+      { id: id, secret: secret }.to_json
+    end
+  end
+
   class Keyring
     attr_reader :keys
 
@@ -85,6 +120,9 @@ module AttrVault
               when 'miscreant'
                 require 'miscreant'
                 keyring.add_key(MiscreantKey.new(key_id.to_s, key[:secret]))
+              when 'libsodium'
+                require 'rbnacl'
+                keyring.add_key(LibSodiumKey.new(key_id.to_s, key[:secret]))
               else
                 raise InvalidKeyring, "Invalid key type: #{key_id.inspect}"
               end
